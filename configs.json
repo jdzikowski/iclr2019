@@ -1,0 +1,85 @@
+[
+    {
+        "node_features" : "categorical",
+        "dataset_name" : "MUTAG",
+        "num_classes" : 2,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "hidden_layer_dim" : 32
+    },
+    {
+        "node_features" : "categorical",
+        "dataset_name" : "NCI1",
+        "num_classes" : 2,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "hidden_layer_dim" : 32
+    },
+    {
+        "node_features" : "categorical",
+        "dataset_name" : "PROTEINS",
+        "num_classes" : 2,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "hidden_layer_dim" : 32
+    },
+    {
+        "node_features" : "categorical",
+        "dataset_name" : "PTC",
+        "num_classes" : 2,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "hidden_layer_dim" : 32
+    },
+    {
+        "node_features" : "same",
+        "dataset_name" : "REDDIT-BINARY",
+        "num_classes" : 2,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "same_feature_dim" : 50,
+        "hidden_layer_dim" : 64
+    },
+    {
+        "node_features" : "same",
+        "dataset_name" : "REDDIT-MULTI-5K",
+        "num_classes" : 5,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "same_feature_dim" : 50,
+        "hidden_layer_dim" : 64
+    },
+    {
+        "node_features" : "same",
+        "dataset_name" : "REDDIT-MULTI-12K",
+        "num_classes" : 11,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "same_feature_dim" : 50,
+        "hidden_layer_dim" : 64
+    },
+    {
+        "node_features" : "node_degree",
+        "dataset_name" : "COLLAB",
+        "num_classes" : 3,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "hidden_layer_dim" : 64
+    },
+    {
+        "node_features" : "node_degree",
+        "dataset_name" : "IMDB-BINARY",
+        "num_classes" : 2,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "hidden_layer_dim" : 64
+    },
+    {
+        "node_features" : "node_degree",
+        "dataset_name" : "IMDB-MULTI",
+        "num_classes" : 3,
+        "batch_size" : 128,
+        "cross_validation_batches" : 10,
+        "hidden_layer_dim" : 64
+    }
+]
