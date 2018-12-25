@@ -1,11 +1,16 @@
 import torch
 import torch.nn.functional as F
-from model import GIN_MLP
+from model import GIN_MLP, GNN_Variant
 
 def train(config, training_set, test_set):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #print('Device used is:', device)
-    model = GIN_MLP(config['num_features'], config['num_classes'], config['hidden_layer_dim']).to(device)
+    print('Device used is:', device)
+    #model = GIN_MLP(config['num_features'], config['num_classes'], config['hidden_layer_dim']).to(device)
+    aggregation_op = 'mean'
+    readout_op = 'sum'
+    num_aggregation_layers = 5
+    mlp_num_layers = 2
+    model = GNN_Variant(aggregation_op, readout_op, num_aggregation_layers, mlp_num_layers, config['num_features'], config['num_classes'], dim=config['hidden_layer_dim'], eps=0, train_eps=False).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     train_history = []
