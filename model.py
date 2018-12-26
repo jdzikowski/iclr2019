@@ -69,6 +69,10 @@ class GNNConv_Variant(GINConv):
         row, col = edge_index
         # Sum, Mean or Max aggregation
         out = self.aggregate_func(x[col], row, dim=0, dim_size=x.size(0))
+        # scatter_max returns a tuple instead of a single value
+        if isinstance(out, tuple):
+            out = out[0]
+        #print(out.size())
         # For sum aggregation we have to add epsilon times node's feature vector
         # Assuming eps is 0 in case of Max and Mean aggregation
         if self.eps != 0 or self.train_eps:
@@ -78,9 +82,11 @@ class GNNConv_Variant(GINConv):
         return out
 
 class GNN_Variant(torch.nn.Module):
-    def __init__(self, aggregation_op, readout_op, num_aggregation_layers, mlp_num_layers, num_features, num_classes, dim=32, eps=0, train_eps=False):
+    def __init__(self, aggregation_op, readout_op, num_aggregation_layers, mlp_num_layers, 
+                 num_features, num_classes, dim=32, eps=0, train_eps=False, dropout_rate=0.5):
         super().__init__()
 
+        self.dropout_rate = dropout_rate
         self.num_aggregation_layers = num_aggregation_layers
         self.aggregators = []
         
@@ -98,7 +104,9 @@ class GNN_Variant(torch.nn.Module):
             for i in range(mlp_num_layers):
                 input_dim = num_features if k == 0 and i == 0 else dim
                 output_dim = dim
-                mlp_layer.extend([Linear(input_dim, output_dim), ReLU(), BatchNorm1d(output_dim)])
+                mlp_layer.extend([Linear(input_dim, output_dim), 
+                                  ReLU(), 
+                                  BatchNorm1d(output_dim)])
             mlp = Sequential(*mlp_layer)           
             self.aggregators.append(GNNConv_Variant(mlp, aggregate_func, eps=eps, train_eps=train_eps))
 
@@ -116,11 +124,14 @@ class GNN_Variant(torch.nn.Module):
 
     def forward(self, x, edge_index, batch):
         for k in range(self.num_aggregation_layers):
+            #print('agg %d:' % k, x.size())
             x = self.aggregators[k](x, edge_index)
+        #print('before readout:', x.size())
         x = self.readout(x, batch)
+        #print('after readout:', x.size())
 
         x = F.relu(self.fc1(x))
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=-1)
 

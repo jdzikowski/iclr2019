@@ -28,9 +28,8 @@ class NodeDegreeFeatureDataLoader(DataLoader):
         return scatter_add(torch.ones(len(data.batch))[col], row, dim=0, dim_size=len(data.batch)).long()
 
 class SameFeatureDataLoader(DataLoader):
-    def __init__(self, dataset, same_feature_dim, batch_size=1, shuffle=True, **kwargs):
+    def __init__(self, dataset, batch_size=1, shuffle=True, **kwargs):
         super().__init__(dataset, batch_size, shuffle, **kwargs)
-        self.same_feature_dim = same_feature_dim
  
     def __iter__(self):
         self.base_iterator = super().__iter__()
@@ -40,7 +39,5 @@ class SameFeatureDataLoader(DataLoader):
         data = next(self.base_iterator)
         print(data)
         if data.x is None:
-            data.x = torch.zeros((len(data.batch), self.same_feature_dim))
-            node_degrees = self.get_node_degrees(data)
-            data.x[:, 0] = 1
+            data.x = torch.ones(len(data.batch))
         return data

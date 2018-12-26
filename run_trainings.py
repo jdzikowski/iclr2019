@@ -39,11 +39,51 @@ parser.add_argument('--no_cuda', action='store_true',
 """
 args = parser.parse_args()
 
+def get_all_param_sets(hypere_params):
+    param_list = [(key, hyper_params[key]) for key in hyper_params]
+    param_sets = [{}]
+    for param in hyper_params:
+        new_param_sets = []
+        options = hyper_params[param]
+        for option in options:
+            for param_set in param_sets:
+                new_param_set = param_set.copy()
+                new_param_set[param] = option
+                new_param_sets.append(new_param_set)
+        param_sets = new_param_sets
+
+    return param_sets
+
+
 with open(args.config_path) as json_file:
     #configs = json.load(json_file, object_hook=lambda d: namedtuple('Config', d.keys())(*d.values()))
-    configs = json.load(json_file)
-    for config in configs:
-        print(config)
-        avg, std = cross_validation(config)
-        print('Result on %s: %f +- %f' % (config['dataset_name'], avg, std))
+    config_data = json.load(json_file)
 
+    #print(config_data)
+    models = config_data['models']
+    datasets = config_data['datasets']
+    base_config = {}
+    for config_key in config_data:
+        if config_key == 'models' or config_key == 'datasets':
+            continue
+        base_config[config_key] = config_data[config_key]
+    
+    configs = []
+    #print('MODELS:')
+    for model in models:
+        #print(model)
+        #print('DATASETS:')
+        for dataset in datasets:
+            #print(dataset)
+            hyper_params = dataset['hypertuned_params']
+            all_param_sets = get_all_param_sets(hyper_params)
+            for param_set in all_param_sets:
+                config = dataset.copy()
+                config.pop('hypertuned_params', None)
+                config = {**config, **base_config, **param_set, **model}
+                configs.append(config)
+
+    for config in configs:
+        print(config, '\n')
+        avg, std, details = cross_validation(config)
+        print('Model %s - dataset %s: %f +- %f' % (config['model_name'], config['dataset_name'], avg, std))

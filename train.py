@@ -6,23 +6,28 @@ def train(config, training_set, test_set):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Device used is:', device)
     #model = GIN_MLP(config['num_features'], config['num_classes'], config['hidden_layer_dim']).to(device)
-    aggregation_op = 'mean'
-    readout_op = 'sum'
-    num_aggregation_layers = 5
-    mlp_num_layers = 2
-    model = GNN_Variant(aggregation_op, readout_op, num_aggregation_layers, mlp_num_layers, config['num_features'], config['num_classes'], dim=config['hidden_layer_dim'], eps=0, train_eps=False).to(device)
+    model = GNN_Variant(config['aggregation_op'], 
+                        config['readout_op'], 
+                        config['num_aggregation_layers'], 
+                        config['mlp_num_layers'], 
+                        config['num_features'], 
+                        config['num_classes'], 
+                        dim=config['hidden_layer_dim'], 
+                        eps=config['epsilon'], 
+                        train_eps=config['train_epsilon'],
+                        dropout_rate=config['dropout_rate']).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     train_history = []
     test_history = []
-    num_epoch = 350
-    for epoch in range(1, num_epoch + 1):
+    num_epochs = config['num_epochs']
+    for epoch in range(1, num_epochs + 1):
         train_loss = training_epoch(model, epoch, training_set, optimizer, device)
         train_acc = eval(model, training_set, device)
         test_acc = eval(model, test_set, device)
         train_history.append(train_acc)
         test_history.append(test_acc)
-        if epoch % 25 == 0:
+        if epoch % 50 == 0:
             print('Epoch: {:03d}, Train Loss: {:.7f}, '
                 'Train Acc: {:.7f}, Test Acc: {:.7f}'.format(epoch, train_loss, train_acc, test_acc))
     return train_history, test_history

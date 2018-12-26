@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from torch_geometric.datasets import TUDataset
 from torch_geometric.data import DataLoader
+from torch_geometric.utils import remove_self_loops
+from torch_scatter import scatter_add
 from data import NodeDegreeFeatureDataLoader, SameFeatureDataLoader
 from train import train
 
@@ -42,6 +44,8 @@ def cross_validation(config):
     train_histories = []
     test_histories = []
     for i in range(cross_validation_batches):
+        #save_cross_validation_progress(config, i, results, train_histories, test_histories)
+        print('Starting cross validation batch %d/%d' % (i+1, cross_validation_batches))
         start_index = i * cross_validation_batch_size
         end_index = (i + 1) * cross_validation_batch_size if i + 1 < cross_validation_batches else len(dataset)
         test_dataset = dataset[start_index:end_index]     
@@ -59,8 +63,8 @@ def cross_validation(config):
             test_loader = NodeDegreeFeatureDataLoader(test_dataset, config['max_node_degree'], batch_size=config['batch_size'])
             train_loader = NodeDegreeFeatureDataLoader(train_dataset, config['max_node_degree'], batch_size=config['batch_size'])
         elif config['node_features'] == 'same':
-            test_loader = SameFeatureDataLoader(test_dataset, config['same_feature_dim'], batch_size=config['batch_size'])
-            train_loader = SameFeatureDataLoader(train_dataset, config['same_feature_dim'], batch_size=config['batch_size'])
+            test_loader = SameFeatureDataLoader(test_dataset, batch_size=config['batch_size'])
+            train_loader = SameFeatureDataLoader(train_dataset, batch_size=config['batch_size'])
 
         train_history, test_history = train(config, train_loader, test_loader) 
         train_histories.append(train_history)
@@ -71,4 +75,9 @@ def cross_validation(config):
 
     avg = np.mean(results)
     std = np.std(results)
-    return avg, std
+    details = {
+        'results' : results,
+        'train_history' : train_histories,
+        'test_history' : test_histories
+    }
+    return avg, std, details

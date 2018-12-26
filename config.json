@@ -1,0 +1,175 @@
+{
+    "models" : [
+        {
+            "model_name" : "GIN-EPS",
+            "aggregation_op" : "sum",
+            "num_aggregation_layers" : 5,
+            "mlp_num_layers" : 2,
+            "epsilon" : 0,
+            "train_epsilon" : true
+        },
+        {
+            "model_name" : "GIN-0",
+            "aggregation_op" : "sum",
+            "num_aggregation_layers" : 5,
+            "mlp_num_layers" : 2,
+            "epsilon" : 0,
+            "train_epsilon" : false
+        },
+        {
+            "model_name" : "SUM-1-LAYER",
+            "aggregation_op" : "sum",
+            "num_aggregation_layers" : 5,
+            "mlp_num_layers" : 1,
+            "epsilon" : 0,
+            "train_epsilon" : false
+        },
+        {
+            "model_name" : "MEAN-MLP",
+            "aggregation_op" : "mean",
+            "num_aggregation_layers" : 5,
+            "mlp_num_layers" : 2,
+            "epsilon" : 0,
+            "train_epsilon" : false
+        },
+        {
+            "model_name" : "MEAN-1-LAYER",
+            "aggregation_op" : "mean",
+            "num_aggregation_layers" : 5,
+            "mlp_num_layers" : 1,
+            "epsilon" : 0,
+            "train_epsilon" : false
+        },
+        {
+            "model_name" : "MAX-MLP",
+            "aggregation_op" : "max",
+            "num_aggregation_layers" : 5,
+            "mlp_num_layers" : 2,
+            "epsilon" : 0,
+            "train_epsilon" : false
+        },
+        {
+            "model_name" : "MAX-1-LAYER",
+            "aggregation_op" : "max",
+            "num_aggregation_layers" : 5,
+            "mlp_num_layers" : 1,
+            "epsilon" : 0,
+            "train_epsilon" : false
+        }
+    ],
+    "datasets" : [
+        {
+            "node_features" : "categorical",
+            "dataset_name" : "MUTAG",
+            "num_classes" : 2,
+            "readout_op" : "sum",
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128],
+                "hidden_layer_dim" : [16, 32]        
+            }
+        },
+        {
+            "node_features" : "categorical",
+            "dataset_name" : "NCI1",
+            "num_classes" : 2,
+            "readout_op" : "sum",
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128],
+                "hidden_layer_dim" : [16, 32]        
+            }
+        },
+        {
+            "node_features" : "categorical",
+            "dataset_name" : "PROTEINS",
+            "num_classes" : 2,
+            "readout_op" : "sum",
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128],
+                "hidden_layer_dim" : [16, 32]        
+            }
+        },
+        {
+            "node_features" : "categorical",
+            "dataset_name" : "PTC",
+            "num_classes" : 2,
+            "readout_op" : "sum",
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128],
+                "hidden_layer_dim" : [16, 32]        
+            }
+        },
+        {
+            "node_features" : "same",
+            "dataset_name" : "REDDIT-BINARY",
+            "num_classes" : 2,
+            "readout_op" : "mean",
+            "hidden_layer_dim" : 64,
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128]     
+            }
+            
+        },
+        {
+            "node_features" : "same",
+            "dataset_name" : "REDDIT-MULTI-5K",
+            "num_classes" : 5,
+            "readout_op" : "mean",
+            "hidden_layer_dim" : 64,
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128]     
+            }
+        },
+        {
+            "node_features" : "same",
+            "dataset_name" : "REDDIT-MULTI-12K",
+            "num_classes" : 11,
+            "readout_op" : "mean",
+            "hidden_layer_dim" : 64,
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128]       
+            }
+        },
+        {
+            "node_features" : "node_degree",
+            "dataset_name" : "COLLAB",
+            "num_classes" : 3,
+            "readout_op" : "mean",
+            "hidden_layer_dim" : 64,
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128]     
+            }
+        },
+        {
+            "node_features" : "node_degree",
+            "dataset_name" : "IMDB-BINARY",
+            "num_classes" : 2,
+            "readout_op" : "mean",
+            "hidden_layer_dim" : 64,
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128]    
+            }
+        },
+        {
+            "node_features" : "node_degree",
+            "dataset_name" : "IMDB-MULTI",
+            "num_classes" : 3,
+            "readout_op" : "mean",
+            "hidden_layer_dim" : 64,
+            "hypertuned_params" : {
+                "dropout_rate" : [0, 0.5],
+                "batch_size" : [32, 128]      
+            }
+        }
+    ],
+    "cross_validation_batches" : 10,
+    "num_epochs" : 350
+}
