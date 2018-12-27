@@ -1,12 +1,16 @@
 import os
 import argparse
 import json
+import hashlib
 from collections import namedtuple
 from cross_validation import cross_validation
+import torch
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_path', type=str, required=True,
                             help='Path to config JSON file')
+parser.add_argument('--results_path', type=str, required=True,
+                            help='Path to directory where results should be stored')
 """
 parser.add_argument('--caption_root', type=str, required=True,
                             help='root directory that contains captions')
@@ -54,12 +58,22 @@ def get_all_param_sets(hypere_params):
 
     return param_sets
 
+def save_results(results, config, path):
+    avg, std, details = results
+    print('Saving results to', path)
+    os.mkdir(path)
+    config_path = os.path.join(path, 'config.json')
+    with open(config_path, 'w') as config_file:
+        config_file.write(json.dumps(config, sort_keys=True))
+    results_path = os.path.join(path, 'results')
+    with open(results_path, 'w') as results_file:
+        print('Avg: %f, Std: %f' % (avg, std), file=results_file)
+    data_path = os.path.join(path, 'data.pth')
+    torch.save(details, data_path)
 
+configs = []
 with open(args.config_path) as json_file:
-    #configs = json.load(json_file, object_hook=lambda d: namedtuple('Config', d.keys())(*d.values()))
     config_data = json.load(json_file)
-
-    #print(config_data)
     models = config_data['models']
     datasets = config_data['datasets']
     base_config = {}
@@ -67,14 +81,9 @@ with open(args.config_path) as json_file:
         if config_key == 'models' or config_key == 'datasets':
             continue
         base_config[config_key] = config_data[config_key]
-    
-    configs = []
-    #print('MODELS:')
+
     for model in models:
-        #print(model)
-        #print('DATASETS:')
         for dataset in datasets:
-            #print(dataset)
             hyper_params = dataset['hypertuned_params']
             all_param_sets = get_all_param_sets(hyper_params)
             for param_set in all_param_sets:
@@ -83,7 +92,28 @@ with open(args.config_path) as json_file:
                 config = {**config, **base_config, **param_set, **model}
                 configs.append(config)
 
-    for config in configs:
-        print(config, '\n')
-        avg, std, details = cross_validation(config)
-        print('Model %s - dataset %s: %f +- %f' % (config['model_name'], config['dataset_name'], avg, std))
+if not os.path.exists(args.results_path):
+    os.mkdir(args.results_path)
+
+for config in configs:
+    print(config)
+    config_hash = hashlib.md5(json.dumps(config, sort_keys=True).encode('utf-8')).hexdigest()
+    model_name = config['model_name']
+    dataset_name = config['dataset_name']
+    model_results_path = os.path.join(args.results_path, model_name)
+    if not os.path.exists(model_results_path):
+        os.mkdir(model_results_path)
+    dataset_results_path = os.path.join(model_results_path, dataset_name)
+    if not os.path.exists(dataset_results_path):
+        os.mkdir(dataset_results_path)
+    config_results_path = os.path.join(dataset_results_path, config_hash)
+    if os.path.exists(config_results_path):
+        print('Model %s - dataset %s: There is already a results directory for config %s, skipping\n' 
+            % (config['model_name'], config['dataset_name'], config_hash))
+        continue
+
+    results = cross_validation(config)
+    avg, std, details = results
+    print('Model %s - dataset %s: %f +- %f' % (config['model_name'], config['dataset_name'], avg, std))
+    save_results(results, config, config_results_path)
+    print('\n')
