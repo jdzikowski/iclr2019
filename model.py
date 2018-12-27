@@ -72,7 +72,6 @@ class GNNConv_Variant(GINConv):
         # scatter_max returns a tuple instead of a single value
         if isinstance(out, tuple):
             out = out[0]
-        #print(out.size())
         # For sum aggregation we have to add epsilon times node's feature vector
         # Assuming eps is 0 in case of Max and Mean aggregation
         if self.eps != 0 or self.train_eps:
@@ -80,6 +79,11 @@ class GNNConv_Variant(GINConv):
         # Feeding aggregated node features through MLP
         out = self.nn(out)
         return out
+
+    def to(self, *args, **kwargs):
+        super().to(*args, **kwargs)
+        return self
+
 
 class GNN_Variant(torch.nn.Module):
     def __init__(self, aggregation_op, readout_op, num_aggregation_layers, mlp_num_layers, 
@@ -124,14 +128,17 @@ class GNN_Variant(torch.nn.Module):
 
     def forward(self, x, edge_index, batch):
         for k in range(self.num_aggregation_layers):
-            #print('agg %d:' % k, x.size())
             x = self.aggregators[k](x, edge_index)
-        #print('before readout:', x.size())
         x = self.readout(x, batch)
-        #print('after readout:', x.size())
 
         x = F.relu(self.fc1(x))
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=-1)
+
+    def to(self, *args, **kwargs):
+        super().to(*args, **kwargs)
+        for aggregator in self.aggregators:
+            aggregator.to(*args, **kwargs)
+        return self
 
