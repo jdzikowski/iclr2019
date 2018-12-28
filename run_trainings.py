@@ -10,8 +10,11 @@ import torch
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_path', type=str, required=True,
                             help='Path to config JSON file')
+parser.add_argument('--data_path', type=str, required=True,
+                            help='Path to directory with datasets')
 parser.add_argument('--results_path', type=str, required=True,
                             help='Path to directory where results should be stored')
+
 """
 parser.add_argument('--caption_root', type=str, required=True,
                             help='root directory that contains captions')
@@ -101,6 +104,7 @@ for config in configs:
     model_name = config['model_name']
     dataset_name = config['dataset_name']
     config_results_path = osp.join(args.results_path, model_name, dataset_name, config_hash)
+    config['data_path'] = args.data_path
     config['results_path'] = config_results_path
     os.makedirs(config_results_path, exist_ok=True)
     if osp.exists(osp.join(config_results_path, 'done')):

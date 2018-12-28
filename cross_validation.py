@@ -33,8 +33,7 @@ def prepare_config_for_dataset(config, dataset):
 
 def cross_validation(config, checkpoint=None):
     dataset_name = config['dataset_name']
-    dataset_path = osp.join(osp.dirname(os.getcwd()), '..', 'data', dataset_name)
-    #dataset = TUDataset(dataset_path, name=dataset_name).shuffle()
+    dataset_path = osp.join(config['data_path'], dataset_name)
     dataset = TUDataset(dataset_path, name=dataset_name)
     if checkpoint is None:
         dataset_permutation = torch.randperm(len(dataset))
