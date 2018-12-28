@@ -1,4 +1,5 @@
 import os
+import os.path as osp
 import argparse
 import json
 import hashlib
@@ -61,15 +62,14 @@ def get_all_param_sets(hypere_params):
 def save_results(results, config, path):
     avg, std, details = results
     print('Saving results to', path)
-    os.mkdir(path)
-    config_path = os.path.join(path, 'config.json')
-    with open(config_path, 'w') as config_file:
+    with open(osp.join(path, 'config.json'), 'w') as config_file:
         config_file.write(json.dumps(config, sort_keys=True))
-    results_path = os.path.join(path, 'results')
-    with open(results_path, 'w') as results_file:
+    with open(osp.join(path, 'results'), 'w') as results_file:
         print('Avg: %f, Std: %f' % (avg, std), file=results_file)
-    data_path = os.path.join(path, 'data.pth')
+    data_path = osp.join(path, 'data.pth')
     torch.save(details, data_path)
+    os.mknod(osp.join(path, 'done'))
+    os.remove(osp.join(path, 'checkpoint'))
 
 configs = []
 with open(args.config_path) as json_file:
@@ -92,7 +92,7 @@ with open(args.config_path) as json_file:
                 config = {**config, **base_config, **param_set, **model}
                 configs.append(config)
 
-if not os.path.exists(args.results_path):
+if not osp.exists(args.results_path):
     os.mkdir(args.results_path)
 
 for config in configs:
@@ -100,19 +100,19 @@ for config in configs:
     config_hash = hashlib.md5(json.dumps(config, sort_keys=True).encode('utf-8')).hexdigest()
     model_name = config['model_name']
     dataset_name = config['dataset_name']
-    model_results_path = os.path.join(args.results_path, model_name)
-    if not os.path.exists(model_results_path):
-        os.mkdir(model_results_path)
-    dataset_results_path = os.path.join(model_results_path, dataset_name)
-    if not os.path.exists(dataset_results_path):
-        os.mkdir(dataset_results_path)
-    config_results_path = os.path.join(dataset_results_path, config_hash)
-    if os.path.exists(config_results_path):
-        print('Model %s - dataset %s: There is already a results directory for config %s, skipping\n' 
+    config_results_path = osp.join(args.results_path, model_name, dataset_name, config_hash)
+    config['results_path'] = config_results_path
+    os.makedirs(config_results_path, exist_ok=True)
+    if osp.exists(osp.join(config_results_path, 'done')):
+        print('Model %s - dataset %s: There is already a result for config %s, skipping\n' 
             % (config['model_name'], config['dataset_name'], config_hash))
         continue
 
-    results = cross_validation(config)
+    checkpoint = None
+    checkpoint_path = osp.join(config_results_path, 'checkpoint')
+    if osp.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+    results = cross_validation(config, checkpoint=checkpoint)
     avg, std, details = results
     print('Model %s - dataset %s: %f +- %f' % (config['model_name'], config['dataset_name'], avg, std))
     save_results(results, config, config_results_path)

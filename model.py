@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch.nn import Sequential, Linear, ReLU, BatchNorm1d
+from torch.nn import Sequential, ModuleList, Linear, ReLU, BatchNorm1d
 from torch_geometric.nn import GINConv, global_add_pool, global_max_pool, global_mean_pool
 from torch_scatter import scatter_add, scatter_max, scatter_mean
 from torch_geometric.utils import add_self_loops, remove_self_loops
@@ -80,9 +80,11 @@ class GNNConv_Variant(GINConv):
         out = self.nn(out)
         return out
 
+    """
     def to(self, *args, **kwargs):
         super().to(*args, **kwargs)
         return self
+    """
 
 
 class GNN_Variant(torch.nn.Module):
@@ -92,7 +94,7 @@ class GNN_Variant(torch.nn.Module):
 
         self.dropout_rate = dropout_rate
         self.num_aggregation_layers = num_aggregation_layers
-        self.aggregators = []
+        self.aggregators = ModuleList()
         
         if aggregation_op == 'sum':
             aggregate_func = scatter_add    
@@ -136,9 +138,11 @@ class GNN_Variant(torch.nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x, dim=-1)
 
+    """
     def to(self, *args, **kwargs):
         super().to(*args, **kwargs)
         for aggregator in self.aggregators:
             aggregator.to(*args, **kwargs)
         return self
 
+    """
