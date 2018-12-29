@@ -17,7 +17,7 @@ def prepare_config_for_dataset(config, dataset):
             edge_index, _ = remove_self_loops(data.edge_index)
             row, col = edge_index
             out = scatter_add(torch.ones(len(data.batch))[col], row, dim=0, dim_size=len(data.batch))
-            max_node_degree = max(max_node_degree, out.max())
+            max_node_degree = max(max_node_degree, out.max().int())
         config['max_node_degree'] = max_node_degree
         config['num_features'] = max_node_degree + 1
     elif config['node_features'] == 'categorical':
