@@ -5,50 +5,6 @@ from torch_geometric.nn import GINConv, global_add_pool, global_max_pool, global
 from torch_scatter import scatter_add, scatter_max, scatter_mean
 from torch_geometric.utils import add_self_loops, remove_self_loops
 
-class GIN_MLP(torch.nn.Module):
-    def __init__(self, num_features, num_classes, dim=32):
-        super().__init__()
-
-        nn1 = Sequential(Linear(num_features, dim), ReLU(), Linear(dim, dim))
-        self.conv1 = GINConv(nn1)
-        self.bn1 = BatchNorm1d(dim)
-
-        nn2 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        self.conv2 = GINConv(nn2)
-        self.bn2 = BatchNorm1d(dim)
-
-        nn3 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        self.conv3 = GINConv(nn3)
-        self.bn3 = BatchNorm1d(dim)
-
-        nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        self.conv4 = GINConv(nn4)
-        self.bn4 = BatchNorm1d(dim)
-
-        nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        self.conv5 = GINConv(nn5)
-        self.bn5 = BatchNorm1d(dim)
-
-        self.fc1 = Linear(dim, dim)
-        self.fc2 = Linear(dim, num_classes)
-
-    def forward(self, x, edge_index, batch):
-        x = F.relu(self.conv1(x, edge_index))
-        x = self.bn1(x)
-        x = F.relu(self.conv2(x, edge_index))
-        x = self.bn2(x)
-        x = F.relu(self.conv3(x, edge_index))
-        x = self.bn3(x)
-        x = F.relu(self.conv4(x, edge_index))
-        x = self.bn4(x)
-        x = F.relu(self.conv5(x, edge_index))
-        x = self.bn5(x)
-        x = global_add_pool(x, batch)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=-1)
-
 class GNNConv_Variant(GINConv):
     def __init__(self, nn, aggregate_func, eps=0, train_eps=False):
         super().__init__(nn, eps, train_eps)
@@ -79,12 +35,6 @@ class GNNConv_Variant(GINConv):
         # Feeding aggregated node features through MLP
         out = self.nn(out)
         return out
-
-    """
-    def to(self, *args, **kwargs):
-        super().to(*args, **kwargs)
-        return self
-    """
 
 
 class GNN_Variant(torch.nn.Module):
@@ -125,24 +75,16 @@ class GNN_Variant(torch.nn.Module):
         else:
             raise Exception('Invalid readout op %s' % readout_op)
 
-        self.fc1 = Linear(dim, dim)
-        self.fc2 = Linear(dim, num_classes)
+        self.fc1 = Linear(num_aggregation_layers * dim, num_aggregation_layers * dim)
+        self.fc2 = Linear(num_aggregation_layers * dim, num_classes)
 
     def forward(self, x, edge_index, batch):
+        layer_readouts = []
         for k in range(self.num_aggregation_layers):
             x = self.aggregators[k](x, edge_index)
-        x = self.readout(x, batch)
-
+            layer_readouts.append(self.readout(x, batch))
+        x = torch.cat(layer_readouts, dim=1)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=-1)
-
-    """
-    def to(self, *args, **kwargs):
-        super().to(*args, **kwargs)
-        for aggregator in self.aggregators:
-            aggregator.to(*args, **kwargs)
-        return self
-
-    """
