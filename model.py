@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch.nn import Sequential, ModuleList, Linear, ReLU, BatchNorm1d
+from torch.nn import Sequential, ModuleList, Linear, ReLU, BatchNorm1d, Dropout
 from torch_geometric.nn import GINConv, global_add_pool, global_max_pool, global_mean_pool
 from torch_scatter import scatter_add, scatter_max, scatter_mean
 from torch_geometric.utils import add_self_loops, remove_self_loops
@@ -60,7 +60,8 @@ class GNN_Variant(torch.nn.Module):
             for i in range(mlp_num_layers):
                 input_dim = num_features if k == 0 and i == 0 else dim
                 output_dim = dim
-                mlp_layer.extend([Linear(input_dim, output_dim), 
+                mlp_layer.extend([Linear(input_dim, output_dim),
+                                  Dropout(self.dropout_rate), 
                                   ReLU(), 
                                   BatchNorm1d(output_dim)])
             mlp = Sequential(*mlp_layer)           
