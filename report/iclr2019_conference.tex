@@ -1,0 +1,175 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2019_conference,times}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{adjustbox}
+
+
+\title{How Powerful are Graph Neural Networks? / \\ ICLR 2019 Reproducibility Challenge}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the \iclrfinalcopy macro remains commented out below.
+% Non-anonymous submissions will be rejected without review.
+
+\author{Jaroslaw Dzikowski \thanks{ Use footnote for providing further information
+about author (webpage, alternative address)---\emph{not} for acknowledging
+funding agencies.  Funding acknowledgements go at the end of the paper.} \\
+Institute of Informatics\\
+University of Wroclaw\\
+Wroclaw, Poland \\
+\texttt{273233@uwr.edu.pl} \\
+}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to \LaTeX{} to determine where to break
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
+% line, try using \AND instead of \And before the third author name.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+The main principle of Graph Neural Networks (GNN) is representing each node as a feature vector computed by recursive aggregation and transformation of neighbouring nodes' feature vectors. This paper is an attempt at reproduction of \textit{How Powerful are Graph Neural Networks?} paper submitted for ICLR 2019 conference that studies the discriminative power of various aggregation schemes applied so far and provides Graph Isomorphism Network (GIN), a scheme with the most discriminative power according to the reproduced paper. We compare the results obtained by our implementation of GIN with the results provided in the reproduced paper.
+\end{abstract}
+
+\section{Introduction}
+Graph neural networks perform aggregation of neighbouring node features for each node $v$ in graph $G$. The aggregation is performed iteratively $K$ times resulting in each node collecting features of nodes $u$ in $K$ edges radius. After $k$ iterations of aggregation, a node’s representation captures the structural
+information within its $k$-hop network neighborhood. Formally, the $k$-th layer $h^{(k)}$ of a GNN is
+$$a_v^{(k)} = \textsc{Aggregate}^{(k)}\left(\left\{h_u^{(k-1)} : u \in \mathcal{N}(v)\right\}\right),\quad h_v^{(k)} = \textsc{Combine}\left(h_v^{(k-1)}, a_v^{(k)}\right).$$
+The aggregated node features from the last, $K$-th, layer can be used for node classification tasks. For graph classification problems, a readout operation is performed on all node feature vectors $h^{(K)}$ in the graph $G$ to obtain the entire graph's representation $h_G$.
+$$h_G = \textsc{Readout}\left(\left\{h_v^{(K)} | v \in G\right\}\right)$$
+
+The main distinctive features of various GNNs are the choices of initial node features $h^{(0)}$, aggregation scheme and readout scheme. The article \cite{ThePaper} provides a theoretical framework for studying expressiveness of various aggregation schemes and proposes an aggregation scheme, Graph Isomorphism Network (GIN), that is optimal according to the framework. GIN sums up neighbouring nodes' feature vectors and adds them to node's weighted current feature. The weight $\epsilon$ is a learnable parameter. Formally GIN is defined as
+\begin{equation}
+    \label{gin-equation}
+    h_v^{(k)} = \textsc{MLP}^{(k)}\left(\left(1+\epsilon^{(k)}\right) \cdot h_v^{(k-1)} + \sum_{u \in \mathcal{N}(v)}h_u^{(k-1)}\right), 
+\end{equation}
+where $\textsc{MLP}$ is a multilayer perceptron. The final representation of graph $h_G$ is the concatenation of \textsc{Readout} performed on each of $K$ aggregation layers:
+\begin{equation}
+    \label{gin-readout}
+    h_G = \textsc{Concat}\left(\textsc{Readout}\left(\left\{h_v^{(k)} | v \in G\right\}\right) |\; k = 0,1,\ldots,K\right).
+\end{equation}
+
+The \textsc{Readout} operation can be implemented by a simple sum or mean of nodes' final feature vectors. Aside from GIN aggregation scheme that sums up neighbouring nodes' feature vectors, there exist mean and max aggregation schemes that, according to the reprodced paper's theoretical framework, lack discriminative power compared to GIN and, therefore, are unable to distinguish certain types of graphs as shown in figures 2 and 3 of \cite{ThePaper}.
+\section{Reproduction details}
+
+\subsection{Implementation}
+Since the authors of \cite{ThePaper} did not provide any source code, we had to implement the GIN and other GNN variants ourselves. We implemented our code in Python 3 using PyTorch framework for neural networks. We leveraged existing implementations of feature vector aggregations and graph level readouts from \verb+pytorch-geometric+\footnote{\url{https://github.com/rusty1s/pytorch_geometric}} library (\cite{Fey/etal/2018}). While the details of aggregation layers and readout operations have been provided, there is little information about classification layers that predict the class of a graph from its representation $h_G$. The authors of the reproduced paper mentioned they used cross validation using LIB-SVM library (Which gives a hypothesis that the authors used an SVM as the classification layer), but since we were unable to use it, we implemented cross validation from scratch and used an MLP as the classification layer. Our implementation is publicly available on Github\footnote{\url{https://github.com/jdzikowski/iclr2019}}.
+
+\subsection{Environment}
+Our code was executed on a Google Cloud Platform VM instance of size n1-standard-4 (4 vCPUs backed by Intel Xeon E5 (Sandy Bridge), 15 GB RAM) with NVIDIA Tesla K80 GPU (12 GB VRAM). Detailed parameters of the VM instance's CPU can be found in GCP documentation\footnote{\url{https://cloud.google.com/compute/docs/cpu-platforms}}. The VM instance was deployed with Debian based Deep Learning Image coming with Python 3.7.1, PyTorch 1.0.0, fastai m15 and CUDA 10.0.
+
+\subsection{Datasets}
+There were 9 datasets we measured performance of GIN and other aggregation schemes on 5 social graph datasets and 4 bioinformatics datasets. We downloaded the datasets from TU Dortmund's Benchmark Data Sets for Graph Kernels site\footnote{\url{https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets}} containing our 9 datasets and a lot of other graph classification datasets.
+
+\subsubsection{Social datasets}
+The 5 social graph datasets are IMDB-BINARY, IMDB-MULTI, REDDIT-BINARY, REDDIT-MULTI5K and COLLAB.
+\begin{itemize}
+    \item IMDB-BINARY and IMDB-MULTI are movie collaboration datasets. Each graph corresponds to an ego-network for each actor/actress, where nodes correspond to actors/actresses and an edge is drawn betwen two actors/actresses if they appear in the same movie. Each graph is derived from a pre-specified genre of movies, and the task is to classify the genre graph it is derived from.
+    \item REDDIT-BINARY and REDDIT-MULTI5K are balanced datasets where each graph corresponds to an online discussion thread and nodes correspond to users. An edge was drawn between two nodes if at least one of them responded to another’s comment. The task is to classify each graph to a community or a subreddit it belongs to.
+    \item COLLAB is a scientific collaboration dataset, derived from 3 public collaboration datasets, namely, High Energy Physics, Condensed Matter Physics and Astro Physics. Each graph corresponds to an ego-network of different researchers from each field. The task is to classify each graph to a field the corresponding researcher belongs to.
+\end{itemize}
+Since the nodes in the social datasets do not have any labels or feature vectors, we have to create them ourselves. Same as in the reproduced paper, we set the same label for all nodes in REDDIT datasets (Making node features uninformative). Formally, each node's initial feature vector is a one-hot vector $h_v^{(0)} \in \mathbb{R}^1$ with 1 in its only dimension. For IMDB and COLLAB datasets, we set the initial node feature vectors to one-hot encodings of node degrees.
+
+\subsubsection{Bioinformatics datasets}
+The 4 bioinformatics graph datasets are MUTAG, PROTEINS, PTC and NCI1. Each node has a categorical feature
+\begin{itemize}
+    \item MUTAG is a dataset of 188 mutagenic aromatic and heteroaromatic nitro compounds where each node has one of 7 discrete labels. The compounds are divided into two classes according to their mutagenic effect on a bacterium.
+    \item PROTEINS is a dataset where nodes are secondary structure elements (SSEs) and there is an edge between two nodes if they are neighbors in the amino-acid sequence or in 3D space. Every node has one of 29 discrete labels and the task is to classify the proteins into two classes.
+    \item PTC is a dataset of chemical compounds that reports the carcinogenicity for male and female rats and mice. There are actually 4 different PTC datasets, one for each combination of gender and rodent species. In \cite{ThePaper}, the authors describe the PTC\_MR dataset consisting of 334 chemical compounds reporting carcinogenicity for only male rats. Each node has one of 19 discrete labels and the task is to classify the compounds into two carcinogenicity classes. From now on when referring to PTC dataset we will mean the PTC\_MR dataset used by the authors of the reproduced paper.
+    \item NCI1 is a dataset made publicly available by the National Cancer Institute (NCI) and is a subset of balanced datasets of chemical compounds screened for ability to suppress or inhibit the growth of a panel of human tumor cell lines, where each node has one of 37 discrete labels and the task is to classify the compounds into two carcinogenicity classes.
+\end{itemize}
+
+One of anonymous commenters under the OpenReview page\footnote{\url{https://openreview.net/forum?id=ryGs6iA5Km&noteId=S1evjSRPc7}} for the reproduced paper suggested that the authors should try measuring performance of GIN and other studied aggregation schemes on a larger dataset such as REDDIT-MULTI12K consisting of 12000 graphs with 11 classes. We attempted to measure performance of various GNNs on the dataset, but cross validating performance for just one aggregation scheme took us over a week and we eventually decided to abandon the dataset.
+
+\subsection{Experiments}
+Following the same steps as in the reproduced paper, we measure training and test accuracy of GIN and other, less powerful according to \cite{ThePaper}, GNNs. Under the GIN framework, we consider two variants: (1) GIN-$\epsilon$ in which $\epsilon$ from equation \ref{gin-equation} is a learnable parameter which will be optimized by neural network's backpropagation, and (2) GIN-0, a simpler and less powerful GIN in which the $\epsilon$ is fixed to $0$. For the less powerful GNN variants we consider ones that use mean or max-pooling aggregation as opposed to GIN's summation of feature vectors and GNNs that use 1-layer perceptrons (Linear layer followed by ReLU) instead of MLPs in equation \ref{gin-equation}. In table \ref{comp-table}, each GNN is named after aggregation scheme and perceptron it uses. We have total of 7 different GNNs. Same as in the reproduced paper, we only consider graph classification task and apply the same graph level readout (\textsc{Readout} from equation \ref{gin-readout}) for GINs and other GNN variants, specifically, sum readout on bioinformatics datasets and mean readout on social datasets.
+
+Same as in \cite{ThePaper}, we perform 10-fold cross validation, however, in the reproduced paper the authors used LIB-SVM library for cross validation and classification of graph feature vectors, while we use our own implementation of cross validation and use a two layer MLP with dropout layer in between (Linear, ReLU, Dropout, Linear, ReLU) for classification. (((((We report the average and standard deviation of validation accuracies across the 10 folds within the cross-validation: for each epoch we compute mean and standard deviation of accuracies from each of the 10 folds and then we return the maximum mean accuracy across all epochs along with the standard deviation for the best epoch. Following the reproduced paper, for all configurations, we apply 5 aggregation layers and all the MLPs have 2 layers (Linear, Dropout, ReLU, BatchNorm, Linear, Dropout, ReLU, BatchNorm). Same as in the reproduced paper, we use Adam optimizer with initial learning rate 0.01 and decay it by 0.5 every 50 epochs. 
+
+There are 4 hyperparameters the authors tuned:
+\begin{enumerate}
+    \item The number of hidden units in MLP layers $\in \{16, 32\}$ for bioinformatics datasets and 64 for social datasets.
+    \item Batch size $\in \{32, 128\}$.
+    \item Dropout ratio after the dense layer $\in \{0, 0.5\}$.
+    \item The number of epochs.
+\end{enumerate}
+The authors of \cite{ThePaper} did not provide the optimal parameters for each GNN variant and dataset, therefore, we had to find them ourselves. Our implementation is capable of hyperparameter tuning, however, due to time constraints and learning proving to be time consuming, we had to give up on finding optimal hyperparameter sets for each configuration and we used the same configuration for all datasets:
+\begin{enumerate}
+    \item The number of hidden units in MLP layers was 32 for bioinformatics datasets and 64 for social datasets.
+    \item Batch size was 128.
+    \item Dropout ratio after the dense layer was 0.5.
+    \item We trained each GNN for 350 epochs.
+    \item For the classification MLP hidden layers had $K \cdot 32$ hidden units for bioinformatics datasets and $K \cdot 64$ for social datasets where $K = 5$ is the number of aggregation layers.
+\end{enumerate}
+
+\section{Results}
+Table \ref{comp-table} compares the classification accuracies and standard deviations obtained by the authors of \cite{ThePaper} (top) with the results obtained in our reproduction attempt (bottom). There are missing results in both tables: the authors of the reproduced paper were unable to obtain results for max aggregation GNN variants for the three largest datasets, REDDIT-BINARY, REDDIT-MULTI5K and COLLAB, due to GPU memory constraints. In our reproduction attempt, training on the largest two datasets, REDDIT-MULTI5K and COLLAB, proved to be too time consuming and we were unable to obtain results due to time constraints. 
+
+The first apparent difference in the results can be observed for the IMDB datasets. Our implementation obtained lower accuracies than the authors'. While accuracies for GINs are not that far from the authors', the biggest contrast is in the results for mean and max-pooling aggregation schemes - these are much worse than the ones reported in the reproduced paper. In fact, they are the same as for random guessing. Notice that mean and max aggregation schemes don't work for REDDIT-BINARY as well. This shows that the discriminative power of mean and max-pooling aggregation schemes is lower than sum aggregation's when node features are either the same or are one-hot encodings of node degrees. With the same feature vectors, the mean and max of neighbouring feature vectors is always going to be the same and will not be informative, the perceptrons we apply feature vectors to during each aggregation are most likely not able to learn anything useful. We do not have any hypothesis explaining why node degrees do not work with mean and max aggregations.
+
+As for bioinformatics datasets, where each node has a categorical label, it can be observed that the results do not diverge that much between different aggregation schemes. The accuracies are also similar to the results obtained by the authors of the reproduced paper. For all the bioinformatics datasets sum aggregation GNN variants yielded the best results. Despite using a simple one layer perceptron instead of an MLP, SUM-1-LAYER achieved the best results for PROTEINS, PTC and NCI1 datasets. It is also worth noting that MEAN-1-LAYER was tied with SUM-1-LAYER in the results for the PTC dataset.
+
+For some datasets, such as the two IMDBs, PROTEINS and NCI1, the accuracies yielded by GINs were lower that the ones reported in the reproduced paper, however, we cannot determine whether GIN really performs worse. In our reproduction attempt, we tested each GNN variant on each dataset only once, with only one configuration. With hyperparameter tuning we could obtain better results for each combination of GNN variant and dataset. Addtionally, we do not know what kind of classification layer the authors used in their implementation. We used a simple 2 layer MLP for classification and did not tune its hyperparameters. Therefore, the difference in the results could also be caused by applying different classifiers.
+
+\begin{table}[t]
+\label{comp-table}
+\begin{center}
+\adjustbox{max width=\textwidth}{
+\begin{tabular}{lccccccccc}
+\multicolumn{10}{c}{}  &\multicolumn{10}{c}{} &\multicolumn{10}{c}{} &\multicolumn{10}{c}{} &\multicolumn{10}{c}{} &\multicolumn{10}{c}{} &\multicolumn{10}{c}{} &\multicolumn{10}{c}{} &\multicolumn{10}{c}{} &\multicolumn{10}{c}{}
+\\ \hline \\
+Datasets                    &IMDB-B     &IMDB-M     &RDT-B      &RDT-M5K    &COLLAB     &MUTAG      &PROTEINS   &PTC    &NCI1 \\
+\# graphs                   &1000       &1500       &2000       &5000       &5000       &188        &1113       &334    &4110 \\
+\# classes                  &2          &3          &2          &5          &3          &2          &2          &2      &2    \\
+Avg \# nodes                 &19.8       &13.0       &429.6      &508.5      &74.5       &17.9       &39.1       &25.5   &29.8 \\
+\\ \hline \\
+\textsc{GIN-$\epsilon$ (SUM-MLP)}    &\bf{74.3 $\pm$ 5.1} &\bf{52.1 $\pm$ 3.6} &\bf{92.2 $\pm$ 2.3} &\bf{57.0 $\pm$ 1.7} &\bf{80.1 $\pm$ 1.9} &\bf{89.0 $\pm$ 6.0} &\bf{75.9 $\pm$ 3.8} &63.7 $\pm$ 8.2 &\bf{82.7 $\pm$ 1.6} \\
+\textsc{GIN-0 (SUM-MLP)}    &\bf{75.1 $\pm$ 5.1} &\bf{52.3 $\pm$ 2.8} &\bf{92.4 $\pm$ 2.5} &\bf{57.5 $\pm$ 1.5} &\bf{80.2 $\pm$ 1.9} &\bf{89.4 $\pm$ 5.6} &\bf{76.2 $\pm$ 2.8} &\bf{64.6 $\pm$ 7.0} &\bf{82.7 $\pm$ 1.7} \\
+\textsc{SUM-1-LAYER}                 &74.1 $\pm$ 5.0 &\bf{52.2 $\pm$ 2.4} &90.0 $\pm$ 2.7 &55.1 $\pm$ 1.6 &\bf{80.6 $\pm$ 1.0} &\bf{90.0 $\pm$ 8.8} &\bf{76.2 $\pm$ 2.6} &63.1 $\pm$ 5.7 &82.0 $\pm$ 1.5 \\
+\textsc{MEAN-MLP}                    &73.7 $\pm$ 3.7 &\bf{52.3 $\pm$ 3.1} &50.0 $\pm$ 0.0 &20.0 $\pm$ 0.0 &79.2 $\pm$ 2.3 &83.5 $\pm$ 6.3 &75.5 $\pm$ 3.4 &\bf{66.6 $\pm$ 6.9} &80.9 $\pm$ 1.8 \\
+\textsc{MEAN-1-LAYER}               &74.0 $\pm$ 3.4 &51.9 $\pm$ 3.8 &50.0 $\pm$ 0.0 &20.0 $\pm$ 0.0 &79.0 $\pm$ 1.8 &85.6 $\pm$ 6.3 &76.0 $\pm$ 3.2 &64.2 $\pm$ 4.3 &80.2 $\pm$ 2.0 \\
+\textsc{MAX-MLP}                     &73.2 $\pm$ 5.8 &51.1 $\pm$ 3.6 &- &- &- &84.0 $\pm$ 6.1 &76.0 $\pm$ 3.2 &64.6 $\pm$ 10.2 &77.8 $\pm$ 1.3 \\
+\textsc{MAX-1-LAYER}                 &72.3 $\pm$ 5.3 &50.9 $\pm$ 2.2 &- &- &- &85.1 $\pm$ 7.6 &75.9 $\pm$ 3.2 &63.9 $\pm$ 7.7 &77.7 $\pm$ 1.5 \\
+\\ \hline \\
+\\ \hline \\
+Datasets                    &IMDB-B     &IMDB-M     &RDT-B      &RDT-M5K    &COLLAB     &MUTAG      &PROTEINS   &PTC    &NCI1 \\
+\# graphs                   &1000       &1500       &2000       &5000       &5000       &188        &1113       &334    &4110 \\
+\# classes                  &2          &3          &2          &5          &3          &2          &2          &2      &2    \\
+Avg \# nodes                 &19.8       &13.0       &429.6      &508.5      &74.5       &17.9       &39.1       &25.5   &29.8 \\
+\\ \hline \\
+\textsc{GIN-$\epsilon$ (SUM-MLP)}    &\bf{69.1 $\pm$ 7.5} &\bf{44.2 $\pm$ 4.6} &\bf{92.8 $\pm$ 1.6} &- &- &\bf{88.0 $\pm$ 6.0} &73.7 $\pm$ 5.0 &\bf{65.5 $\pm$ 5.3} &\bf{82.5 $\pm$ 2.1} \\
+\textsc{GIN-0 (SUM-MLP)}    &\bf{69.6 $\pm$ 4.6} &\bf{46.2 $\pm$ 5.0} &\bf{92.7 $\pm$ 1.7} &- &- &\bf{90.6 $\pm$ 5.4} &\bf{74.8 $\pm$ 3.6} &61.6 $\pm$ 5.4 &82.1 $\pm$ 1.6 \\
+\textsc{SUM-1-LAYER}                 &\bf{69.1 $\pm$ 4.7} &\bf{47.5 $\pm$ 5.0} &\bf{93.0 $\pm$ 1.7} &- &- &87.3 $\pm$ 8.2 &\bf{75.7 $\pm$ 4.0} &\bf{65.8 $\pm$ 6.7} &\bf{83.0 $\pm$ 2.7} \\
+\textsc{MEAN-MLP}                    &52.4 $\pm$ 2.1 &35.6 $\pm$ 2.6 &52.1 $\pm$ 1.8 &- &- &82.3 $\pm$ 6.8 &73.1 $\pm$ 2.9 &64.5 $\pm$ 7.3 &81.1 $\pm$ 2.3 \\
+\textsc{MEAN-1-LAYER}                &52.6 $\pm$ 2.7 &33.9 $\pm$ 2.7 &51.7 $\pm$ 3.0 &- &- &85.8 $\pm$ 8.8 &74.3 $\pm$ 4.5 &\bf{65.8 $\pm$ 11.5} &80.9 $\pm$ 1.2 \\
+\textsc{MAX-MLP}                     &53.4 $\pm$ 4.9 &36.5 $\pm$ 3.1 &53.2 $\pm$ 1.6 &- &- &81.5 $\pm$ 8.4 &70.6 $\pm$ 6.4 &62.4 $\pm$ 7.9 &79.1 $\pm$ 2.2 \\
+\textsc{MAX-1-LAYER}                 &53.4 $\pm$ 4.4 &34.4 $\pm$ 3.3 &51.6 $\pm$ 3.7 &- &- &79.1 $\pm$ 7.3 &72.6 $\pm$ 4.1 &62.9 $\pm$ 8.2 &78.1 $\pm$ 1.8 \\
+\\ \hline \\
+\end{tabular}
+}
+\end{center}
+\caption{Top: classification accuracies (\%) and standard deviations for GNN variants as shown in Table 1 of \cite{ThePaper}. Bottom: reproduced classification accuracies (\%) and standard deviations for GNN variants.}
+\end{table}
+
+\section{Conclusion}
+In our reproduction attempt of \cite{ThePaper}, the proposed GNN aggregation scheme yielded worse results for certain datasets than what was reported in the original paper. However, without taking more time to test each combination of hyperparameters as the authors of the reproduced paper did, we cannot determine whether GINs perform better or worse than baselines and other GNN variants. Furthermore, not all parts of authors' implementation are clear, such as classification layers of their network, which further compounds the divergence of obtained results. One matter that raises questions is why our implementation obtained clearly different results for mean and max-pooling GNNs on IMDB datasets, while obtaining similar to authors' results on bioinformatics datasets. Finally, it would also be helpful to take more time and compute the results on larger datsets such as REDDIT-MULTI5K, COLLAB and the large dataset, REDDIT-MULTI12K, requested by one of anonymous commenters at the review page of the ICLR 2019 submission for the reproduced paper.
+
+
+\bibliography{iclr2019_conference}
+\bibliographystyle{iclr2019_conference}
+
+\end{document}
