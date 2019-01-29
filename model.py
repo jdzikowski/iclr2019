@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch.nn import Sequential, ModuleList, Linear, ReLU, BatchNorm1d, Dropout
+from torch.nn import Sequential, ModuleList, Linear, ReLU, BatchNorm1d, Dropout, LogSoftmax
 from torch_geometric.nn import GINConv, global_add_pool, global_max_pool, global_mean_pool
 from torch_scatter import scatter_add, scatter_max, scatter_mean
 from torch_geometric.utils import add_self_loops, remove_self_loops
@@ -76,16 +76,18 @@ class GNN_Variant(torch.nn.Module):
         else:
             raise Exception('Invalid readout op %s' % readout_op)
 
-        self.fc1 = Linear(num_aggregation_layers * dim, num_aggregation_layers * dim)
-        self.fc2 = Linear(num_aggregation_layers * dim, num_classes)
+        self.classifier = Sequential(
+            Linear(num_features + num_aggregation_layers * dim, num_features + num_aggregation_layers * dim),
+            ReLU(),
+            Dropout(self.dropout_rate),
+            Linear(num_features + num_aggregation_layers * dim, num_classes),
+            LogSoftmax(dim=-1)
+        )
 
     def forward(self, x, edge_index, batch):
-        layer_readouts = []
+        layer_readouts = [self.readout(x, batch)]
         for k in range(self.num_aggregation_layers):
             x = self.aggregators[k](x, edge_index)
             layer_readouts.append(self.readout(x, batch))
         x = torch.cat(layer_readouts, dim=1)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=-1)
+        return self.classifier(x)

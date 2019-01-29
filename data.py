@@ -15,7 +15,6 @@ class NodeDegreeFeatureDataLoader(DataLoader):
     
     def __next__(self):
         data = next(self.base_iterator)
-        #print(data)
         if data.x is None:
             data.x = torch.zeros((len(data.batch), self.max_node_degree + 1))
             node_degrees = self.get_node_degrees(data)
@@ -37,7 +36,6 @@ class SameFeatureDataLoader(DataLoader):
     
     def __next__(self):
         data = next(self.base_iterator)
-        #print(data)
         if data.x is None:
-            data.x = torch.ones(len(data.batch))
+            data.x = torch.ones((len(data.batch), 1))
         return data
